@@ -58,22 +58,59 @@ async function run() {
       next()
     }
 
-
-
-
-
-
-
-
+      // use verify admin after verifyToken
+      const verifyAdmin = async (req, res, next) => {
+        const email = req.decoded.email;
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        const isAdmin = user?.role === 'admin';
+        if (!isAdmin) {
+          return res.status(403).send({ message: 'forbidden access' });
+        }
+        next();
+      }
 
 
     // users collection
-    app.get('/users',Verifytoken,async(req,res)=>{
+    app.get('/users',Verifytoken, verifyAdmin, async(req,res)=>{
       console.log(req.headers)
-    
+  
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
+
+    // admin 
+    app.get('/users/admin/:email', Verifytoken, async (req, res) => {
+      const email = req.params.email; // Get email from URL params
+      console.log(email);
+  
+      // Check if the email in the request matches the decoded email
+      if (email !== req.decoded.email) {
+          return res.status(403).send({ message: 'Forbidden access' });
+      }
+  
+      // Find the user by email
+      const query = { email: email };
+      console.log(query);
+      const user = await usersCollection.findOne(query);
+  
+      let admin = false;
+      if (user) {
+          admin = user.role === 'admin'; // Check if the user's role is 'admin'
+      }
+  
+      // Send response
+      res.send({ admin });
+  });
+  
+  
+
+
+    //  volunteer
+    
+
+
+
     app.get('/users/profile', async (req, res) => {
       try {
         const email = req.query.email; // Get email from query params
@@ -89,8 +126,9 @@ async function run() {
       }
     });
     
-
-    app.patch('/users/admin/:id',async(req,res)=>{
+// admin role
+    app.patch('/users/admin/:id',Verifytoken, verifyAdmin, async(req,res)=>{
+      console.log('Received request to make admin for ID:', req.params.id);
       const id = req.params.id
       const filter = {_id: new ObjectId(id)}
       const updatedoc = {
