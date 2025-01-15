@@ -39,7 +39,25 @@ async function run() {
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
-
+    app.get('/users/profile', async (req, res) => {
+      try {
+        const email = req.query.email; // Get email from query params
+        const query = { email: email }; // Construct query object
+        const user = await usersCollection.findOne(query); // Find user by email
+        if (user) {
+          res.send(user); // Send the user data
+        } else {
+          res.status(404).send({ message: 'User not found' });
+        }
+      } catch (error) {
+        res.status(500).send({ message: 'Error fetching user profile', error });
+      }
+    });
+    
+   
+    
+    
+    
 
 
     app.post('/users',async(req,res)=>{
