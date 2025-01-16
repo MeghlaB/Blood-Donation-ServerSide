@@ -153,6 +153,13 @@ async function run() {
       const result = await donationrequestCollection.findOne(query)
       res.send(result)
     })
+    app.delete('/donation/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await donationrequestCollection.deleteOne(query)
+      res.send(result)
+
+    })
 
     app.patch('/donation/:id', async (req, res) => {
       const userData = req.body
@@ -174,6 +181,12 @@ async function run() {
       res.send(result)
     })
 
+// all donation.............................
+
+app.get('/AlldonerRequest',Verifytoken,verifyAdmin, async(req,res)=>{
+  const result = await donationrequestCollection.find().toArray()
+    res.send(result)
+})
 
     app.post('/donation-requests', Verifytoken, async (req, res) => {
       const requset = req.body
