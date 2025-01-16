@@ -31,25 +31,25 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-   
+
     const usersCollection = client.db("BloodDonate").collection("users");
     const donationrequestCollection = client.db('BloodDonate').collection('donation-requests')
     // jwt api related
-    app.post('/jwt',async(req,res)=>{
+    app.post('/jwt', async (req, res) => {
       const user = req.body
-      const token = jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{expiresIn:'365d' })
-      res.send({token})
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '365d' })
+      res.send({ token })
     })
 
     // Verifytoken 
 
-    const Verifytoken = (req,res,next)=>{
-      console.log('insert token',req.headers.authorization)
-      if(!req.headers.authorization){
-        return res.status(401).send({message:'Forbidden message'})
+    const Verifytoken = (req, res, next) => {
+      console.log('insert token', req.headers.authorization)
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Forbidden message' })
       }
       const token = req.headers.authorization.split(' ')[1]
-      jwt.verify(token,process.env.ACCESS_TOKEN_SECRET,(err ,decoded)=>{
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
           return res.status(401).send({ message: 'unauthorized access' })
         }
@@ -58,50 +58,50 @@ async function run() {
       next()
     }
 
-      // use verify admin after verifyToken
-      const verifyAdmin = async (req, res, next) => {
-        const email = req.decoded.email;
-        const query = { email: email };
-        const user = await usersCollection.findOne(query);
-        const isAdmin = user?.role === 'admin';
-        if (!isAdmin) {
-          return res.status(403).send({ message: 'forbidden access' });
-        }
-        next();
+    // use verify admin after verifyToken
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
       }
+      next();
+    }
 
 
     // users collection
-    app.get('/users',Verifytoken, verifyAdmin ,async(req,res)=>{
+    app.get('/users', Verifytoken, verifyAdmin, async (req, res) => {
       console.log(req.headers)
-  
+
       const result = await usersCollection.find().toArray()
       res.send(result)
     })
 
     // admin 
     app.get('/users/admin/:email', Verifytoken, async (req, res) => {
-      const email = req.params.email; 
+      const email = req.params.email;
       console.log(email);
-  
+
       // Check if the email in the request matches the decoded email
       if (email !== req.decoded.email) {
-          return res.status(403).send({ message: 'Forbidden access' });
+        return res.status(403).send({ message: 'Forbidden access' });
       }
-  
+
       // Find the user by email
       const query = { email: email };
       console.log(query);
       const user = await usersCollection.findOne(query);
-  
+
       let admin = false;
       if (user) {
-          admin = user.role === 'admin'; // Check if the user's role is 'admin'
+        admin = user.role === 'admin'; // Check if the user's role is 'admin'
       }
-  
+
       // Send response
       res.send({ admin });
-  });
+    });
 
     app.get('/users/profile', async (req, res) => {
       try {
@@ -117,40 +117,70 @@ async function run() {
         res.status(500).send({ message: 'Error fetching user profile', error });
       }
     });
-    
-// admin role
-    app.patch('/users/admin/:id',Verifytoken, verifyAdmin, async(req,res)=>{
+
+    // admin role
+    app.patch('/users/admin/:id', Verifytoken, verifyAdmin, async (req, res) => {
       console.log('Received request to make admin for ID:', req.params.id);
       const id = req.params.id
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updatedoc = {
-        $set:{
-          role:'admin'
+        $set: {
+          role: 'admin'
         }
       }
       const result = await usersCollection.updateOne(filter, updatedoc)
       res.send(result)
     })
-    app.post('/users',async(req,res)=>{
-     const userData=req.body
-      const result =  await usersCollection.insertOne(userData)
+    app.post('/users', async (req, res) => {
+      const userData = req.body
+      const result = await usersCollection.insertOne(userData)
       res.send(result)
     })
 
-// donation-requests   
+    // donation-requests  
+
+    app.get('/donation-requests/:email', Verifytoken, async (req, res) => {
+      const email = req.params.email
+      const query = { 'requesterEmail': email }
+      const donationRequest = await donationrequestCollection.find(query).toArray()
+      res.send(donationRequest)
+
+    })
+
+    app.get('/donation/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await donationrequestCollection.findOne(query)
+      res.send(result)
+    })
+
+    app.patch('/donation/:id', async (req, res) => {
+      const userData = req.body
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const updatedoc = {
+        $set: {
+          bloodGroup: userData.bloodGroup,
+          district: userData.district,
+          donationDate: userData.donationDate,
+          donationTime: userData.donationTime,
+          fullAddress: userData.fullAddress,
+          hospitalName: userData.hospitalName,
+          recipientName: userData.recipientName,
+          upazila: userData.upazila,
+        }
+      }
+      const result = await donationrequestCollection.updateOne(query, updatedoc)
+      res.send(result)
+    })
 
 
+    app.post('/donation-requests', Verifytoken, async (req, res) => {
+      const requset = req.body
+      const result = await donationrequestCollection.insertOne(requset)
+      res.send(result)
+    })
 
-
-  
-
-
-app.post('/donation-requests', Verifytoken, async(req,res)=>{
-  const requset = req.body
-  const result = await donationrequestCollection.insertOne(requset)
-  res.send (result)
-}) 
-    
 
 
 
