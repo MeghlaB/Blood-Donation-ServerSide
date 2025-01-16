@@ -33,7 +33,7 @@ async function run() {
 
    
     const usersCollection = client.db("BloodDonate").collection("users");
-
+    const donationrequestCollection = client.db('BloodDonate').collection('donation-requests')
     // jwt api related
     app.post('/jwt',async(req,res)=>{
       const user = req.body
@@ -72,7 +72,7 @@ async function run() {
 
 
     // users collection
-    app.get('/users',Verifytoken, verifyAdmin, async(req,res)=>{
+    app.get('/users',Verifytoken, verifyAdmin ,async(req,res)=>{
       console.log(req.headers)
   
       const result = await usersCollection.find().toArray()
@@ -81,7 +81,7 @@ async function run() {
 
     // admin 
     app.get('/users/admin/:email', Verifytoken, async (req, res) => {
-      const email = req.params.email; // Get email from URL params
+      const email = req.params.email; 
       console.log(email);
   
       // Check if the email in the request matches the decoded email
@@ -102,14 +102,6 @@ async function run() {
       // Send response
       res.send({ admin });
   });
-  
-  
-
-
-    //  volunteer
-    
-
-
 
     app.get('/users/profile', async (req, res) => {
       try {
@@ -139,17 +131,25 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updatedoc)
       res.send(result)
     })
-   
-    
-    
-    
-
-
     app.post('/users',async(req,res)=>{
      const userData=req.body
       const result =  await usersCollection.insertOne(userData)
       res.send(result)
     })
+
+// donation-requests   
+
+
+
+
+  
+
+
+app.post('/donation-requests', Verifytoken, async(req,res)=>{
+  const requset = req.body
+  const result = await donationrequestCollection.insertOne(requset)
+  res.send (result)
+}) 
     
 
 
