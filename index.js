@@ -156,7 +156,51 @@ async function run() {
       res.send(result)
     })
 
- //  admin  role  ar email
+
+// one admin user handale role change
+app.patch('/users/AdimnroleChange/:id', Verifytoken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body;
+
+ 
+  // console.log('Updating role for ID:', id, 'New role:', role);
+
+
+  if (!['admin', 'volunteer', 'donor'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role selected' });
+  }
+
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: { role: role }
+  };
+
+  try {
+ 
+    const user = await usersCollection.findOne(filter);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+  
+    const result = await usersCollection.updateOne(filter, updateDoc);
+
+
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({ message: 'Role update failed. No changes made.' });
+    }
+
+    res.json({ message: 'Role updated successfully' });
+  } catch (error) {
+    console.error('Error updating role:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+
+
+ //  volunteer  role  ar email
  app.get('/users/volunteer/:email', Verifytoken, async (req, res) => {
   const email = req.params.email;
   console.log(email);
@@ -173,7 +217,7 @@ async function run() {
 
   let volunteer = false;
   if (user) {
-    volunteer = user.role === 'volunteer'; // Check if the user's role is 'admin'
+    volunteer = user.role === 'volunteer'; 
   }
 
   // Send response
