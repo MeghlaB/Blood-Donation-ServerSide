@@ -70,6 +70,21 @@ async function run() {
       next();
     }
 
+// use verify vlounterr after verifyToken
+    const verifyVlounteer = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const isvolunteer = user?.role === 'volunteer';
+      if (!isvolunteer) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
+      next();
+    }
+
+
+
+
 
     // users collection
     app.get('/users', Verifytoken, verifyAdmin, async (req, res) => {
@@ -79,7 +94,15 @@ async function run() {
       res.send(result)
     })
 
-    // admin 
+    // user api post.................
+    app.post('/users', async (req, res) => {
+      const userData = req.body
+      const result = await usersCollection.insertOne(userData)
+      res.send(result)
+    })
+
+
+    //  admin  role  ar email
     app.get('/users/admin/:email', Verifytoken, async (req, res) => {
       const email = req.params.email;
       console.log(email);
@@ -103,6 +126,7 @@ async function run() {
       res.send({ admin });
     });
 
+    // user profile api.......................
     app.get('/users/profile', async (req, res) => {
       try {
         const email = req.query.email; // Get email from query params
@@ -131,14 +155,59 @@ async function run() {
       const result = await usersCollection.updateOne(filter, updatedoc)
       res.send(result)
     })
-    app.post('/users', async (req, res) => {
-      const userData = req.body
-      const result = await usersCollection.insertOne(userData)
+
+ //  admin  role  ar email
+ app.get('/users/volunteer/:email', Verifytoken, async (req, res) => {
+  const email = req.params.email;
+  console.log(email);
+
+  // Check if the email in the request matches the decoded email
+  if (email !== req.decoded.email) {
+    return res.status(403).send({ message: 'Forbidden access' });
+  }
+
+  // Find the user by email
+  const query = { email: email };
+  console.log(query);
+  const user = await usersCollection.findOne(query);
+
+  let volunteer = false;
+  if (user) {
+    volunteer = user.role === 'volunteer'; // Check if the user's role is 'admin'
+  }
+
+  // Send response
+  res.send({ volunteer });
+});
+
+
+
+    // volunteer role
+    app.patch('/users/Volunteer/:id', Verifytoken,verifyVlounteer, async (req, res) => {
+      console.log('Received request to make admin for ID:', req.params.id);
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
+      const updatedoc = {
+        $set: {
+          role: 'volunteer'
+        }
+      }
+      const result = await usersCollection.updateOne(filter, updatedoc)
       res.send(result)
     })
 
-    // donation-requests  
 
+
+
+      // donation request post api
+      app.post('/donation-requests', Verifytoken, async (req, res) => {
+        const requset = req.body
+        const result = await donationrequestCollection.insertOne(requset)
+        res.send(result)
+      })
+
+
+    // donation-reuest/:email api....................
     app.get('/donation-requests/:email', Verifytoken, async (req, res) => {
       const email = req.params.email
       const query = { 'requesterEmail': email }
@@ -147,12 +216,14 @@ async function run() {
 
     })
 
+    // dation/:id get api ............................
     app.get('/donation/:id', async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await donationrequestCollection.findOne(query)
       res.send(result)
     })
+    // doantion delate api.........................
     app.delete('/donation/:id', async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
@@ -160,7 +231,7 @@ async function run() {
       res.send(result)
 
     })
-
+    // donation update ........................
     app.patch('/donation/:id', async (req, res) => {
       const userData = req.body
       const id = req.params.id
@@ -181,21 +252,43 @@ async function run() {
       res.send(result)
     })
 
-// all donation.............................
+    // all donation.............................
 
-app.get('/AlldonerRequest',Verifytoken,verifyAdmin, async(req,res)=>{
-  const result = await donationrequestCollection.find().toArray()
-    res.send(result)
-})
-
-    app.post('/donation-requests', Verifytoken, async (req, res) => {
-      const requset = req.body
-      const result = await donationrequestCollection.insertOne(requset)
+    app.get('/AlldonerRequest', Verifytoken, verifyAdmin, async (req, res) => {
+      const result = await donationrequestCollection.find().toArray()
       res.send(result)
     })
 
 
+    // search donars 
+    app.get("/donars", async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+    
+      // Check if all 
+      if (!bloodGroup || !district || !upazila) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+    
+      try {
+        const donors = await donationrequestCollection.find({
+          bloodGroup,
+          district,
+          upazila,
+        }).toArray(); 
 
+        // If no donors found
+        if (donors.length === 0) {
+          return res.status(404).json({ message: "No donors found for the selected criteria." });
+        }
+  
+        
+        res.status(200).json(donors);
+      } catch (error) {
+        console.error("Error fetching donors:", error);
+        res.status(500).json({ message: "An error occurred while fetching donor data." });
+      }
+    });
+    
 
 
 
