@@ -350,6 +350,42 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       res.send(result)
     })
 
+
+// view btn ay clcik korly donate now btn and conform ay click korly status Updated.................
+    app.put('/donation-requests/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log(id)
+      const status = req.body.status;
+      console.log(status)
+      const query = { _id: new ObjectId(id) };
+
+      const item = await donationrequestCollection.findOne(query);
+      if (item && item.status === "inprogress") {
+        return res.status(400).send({ message: 'This item is already marked as inprogress' });
+      }
+      const updateDoc = {
+        $set: { status: status },
+      };
+      const result = await donationrequestCollection.updateOne(query, updateDoc);
+      if (result.modifiedCount === 0) {
+        return res.status(404).send({ message: 'Status not found' });
+      }
+      res.send(result);
+    });
+
+
+// get details page api...................
+    app.get('/alldonarPageRequest/:id',async(req,res)=>{
+      const id = req.params.id;
+      // console.log(id)
+      const qeury = { _id: new ObjectId(id) }
+      const result = await donationrequestCollection.findOne(qeury)
+      res.send(result)
+    })
+
+
+
+
     // vlounteer all donation
     app.get('/alldonarrequest',async(req,res)=>{
       const result = await donationrequestCollection.find().toArray()
