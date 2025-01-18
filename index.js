@@ -84,6 +84,28 @@ async function run() {
 
 
 
+// userdata load api........................
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray()
+      res.send(result)
+    })
+
+    // userdata email api............................
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email; 
+      const  query = {email:email}
+      try {
+          const user = await usersCollection.findOne(query);
+          if (user) {
+              res.send({ status: user.status || 'active' }); 
+          } else {
+              res.status(404).send({ error: 'User not found' });
+          }
+      } catch (error) {
+          res.status(500).send({ error: ' error' });
+      }
+  });
+  
 
 
     // users collection
@@ -129,9 +151,9 @@ async function run() {
     // user profile api.......................
     app.get('/users/profile', async (req, res) => {
       try {
-        const email = req.query.email; // Get email from query params
-        const query = { email: email }; // Construct query object
-        const user = await usersCollection.findOne(query); // Find user by email
+        const email = req.query.email; 
+        const query = { email: email }; 
+        const user = await usersCollection.findOne(query); 
         if (user) {
           res.send(user); // Send the user data
         } else {
@@ -231,21 +253,17 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
   }
 });
 
-
-
-
-
  //  volunteer  role  ar email
  app.get('/users/volunteer/:email', Verifytoken, async (req, res) => {
   const email = req.params.email;
   console.log(email);
 
-  // Check if the email in the request matches the decoded email
+ 
   if (email !== req.decoded.email) {
     return res.status(403).send({ message: 'Forbidden access' });
   }
 
-  // Find the user by email
+  
   const query = { email: email };
   console.log(query);
   const user = await usersCollection.findOne(query);
@@ -258,8 +276,6 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
   // Send response
   res.send({ volunteer });
 });
-
-
 
     // volunteer role
     app.patch('/users/Volunteer/:id', Verifytoken,verifyVlounteer, async (req, res) => {
@@ -275,16 +291,12 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       res.send(result)
     })
 
-
-
-
       // donation request post api
       app.post('/donation-requests', Verifytoken, async (req, res) => {
         const requset = req.body
         const result = await donationrequestCollection.insertOne(requset)
         res.send(result)
       })
-
 
     // donation-reuest/:email api....................
     app.get('/donation-requests/:email', Verifytoken, async (req, res) => {
@@ -302,6 +314,7 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       const result = await donationrequestCollection.findOne(query)
       res.send(result)
     })
+
     // doantion delate api.........................
     app.delete('/donation/:id', async (req, res) => {
       const id = req.params.id
@@ -331,13 +344,55 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       res.send(result)
     })
 
-    // all donation.............................
-
+    // admin all donation.............................
     app.get('/AlldonerRequest', Verifytoken, verifyAdmin, async (req, res) => {
       const result = await donationrequestCollection.find().toArray()
       res.send(result)
     })
 
+    // vlounteer all donation
+    app.get('/alldonarrequest',async(req,res)=>{
+      const result = await donationrequestCollection.find().toArray()
+      res.send(result)
+    })
+
+    // vlounteer updated staus
+    app.put('/alldonar/status/:id',  async (req, res) => {
+      const id = req.params.id; 
+      console.log(id);
+    
+      const { status } = req.body;
+      console.log(status);
+    
+      if (!['pending', 'inprogress'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status selected' });
+      }
+    
+      const filter = { _id: new ObjectId(id) }; 
+      const updateDoc = {
+        $set: { status: status }, 
+      };
+    
+      try {
+      
+        const user = await donationrequestCollection.findOne(filter);
+        if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+    
+    
+        const result = await donationrequestCollection.updateOne(filter, updateDoc);
+        if (result.modifiedCount === 0) {
+          return res.status(400).json({ message: 'Status update failed. No changes made.' });
+        }
+    
+        res.json({ message: 'Status updated successfully' });
+      } catch (error) {
+        console.error('Error updating status:', error);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+    
 
     // search donars 
     app.get("/donars", async (req, res) => {
