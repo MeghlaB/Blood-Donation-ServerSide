@@ -161,11 +161,7 @@ async function run() {
 app.patch('/users/AdimnroleChange/:id', Verifytoken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
   const { role } = req.body;
-
  
-  // console.log('Updating role for ID:', id, 'New role:', role);
-
-
   if (!['admin', 'volunteer', 'donor'].includes(role)) {
     return res.status(400).json({ message: 'Invalid role selected' });
   }
@@ -196,6 +192,45 @@ app.patch('/users/AdimnroleChange/:id', Verifytoken, verifyAdmin, async (req, re
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// status block unblock
+
+app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
+  const id = req.params.id; 
+  console.log(id);
+
+  const { status } = req.body;
+  console.log(status);
+
+  if (!['block', 'active', 'unblock'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status selected' });
+  }
+
+  const filter = { _id: new ObjectId(id) }; 
+  const updateDoc = {
+    $set: { status: status }, 
+  };
+
+  try {
+  
+    const user = await usersCollection.findOne(filter);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+
+    const result = await usersCollection.updateOne(filter, updateDoc);
+    if (result.modifiedCount === 0) {
+      return res.status(400).json({ message: 'Status update failed. No changes made.' });
+    }
+
+    res.json({ message: 'Status updated successfully' });
+  } catch (error) {
+    console.error('Error updating status:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 
 
 
