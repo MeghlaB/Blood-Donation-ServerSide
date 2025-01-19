@@ -34,6 +34,7 @@ async function run() {
 
     const usersCollection = client.db("BloodDonate").collection("users");
     const donationrequestCollection = client.db('BloodDonate').collection('donation-requests')
+    const contentCollection = client.db('BloodDonate').collection('blogs')
     // jwt api related
     app.post('/jwt', async (req, res) => {
       const user = req.body
@@ -299,7 +300,7 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       })
 
     // donation-reuest/:email api....................
-    app.get('/donation-requests/:email', Verifytoken, async (req, res) => {
+    app.get('/requests/:email',  async (req, res) => {
       const email = req.params.email
       const query = { 'requesterEmail': email }
       const donationRequest = await donationrequestCollection.find(query).toArray()
@@ -383,9 +384,6 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       res.send(result)
     })
 
-
-
-
     // vlounteer all donation
     app.get('/alldonarrequest',async(req,res)=>{
       const result = await donationrequestCollection.find().toArray()
@@ -400,7 +398,7 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       const { status } = req.body;
       console.log(status);
     
-      if (!['pending', 'inprogress'].includes(status)) {
+      if (!['pending', 'inprogress','cancaled','done'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status selected' });
       }
     
@@ -429,6 +427,68 @@ app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       }
     });
     
+   
+    // add blog api...........
+    app.get('/blogs',async (req,res)=>{
+      const result = await contentCollection.find().toArray()
+      res.send(result)
+    })
+    app.post('/blogs',async(req,res)=>{
+      const blog = req.body
+      const result = await contentCollection.insertOne(blog)
+      console.log(result)
+      res.send(result)
+
+
+    })
+
+    app.delete('/blogs/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await contentCollection.deleteOne(query)
+      res.send(result)
+
+    })
+
+    app.patch('/blogs/:id', async (req, res) => {
+      const userData = req.body
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const updatedoc = {
+        $set: {
+          bloodGroup: userData.bloodGroup,
+          district: userData.district,
+          donationDate: userData.donationDate,
+          donationTime: userData.donationTime,
+          fullAddress: userData.fullAddress,
+          hospitalName: userData.hospitalName,
+          recipientName: userData.recipientName,
+          upazila: userData.upazila,
+        }
+      }
+      const result = await donationrequestCollection.updateOne(query, updatedoc)
+      res.send(result)
+    })
+    app.patch('/blogs/:id',  async (req, res) => {
+      const { id } = req.params;
+      const updateItem = req.body;
+      const result = await contentCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateItem }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(404).send({ message: 'Item not found or Lost' });
+      }
+
+      res.send(result);
+    });
+
+
+
+
+
+
 
     // search donars 
     app.get("/donars", async (req, res) => {
