@@ -7,12 +7,15 @@ const app = express()
 const port = process.env.PORT || 5000
 
 // midleWare
-app.use(cors())
+app.use(cors({
+  origin: ['https://blood-donation-6ebb1.web.app',
+    'http://localhost:5173',
+    'http://localhost:4173'
+  ],
+  // methods: ['GET', 'POST', 'PUT', 'DELETE','PATCH'],
+  credentials: true,  
+}))
 app.use(express.json())
-
-
-
-
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -30,12 +33,13 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
 
     const usersCollection = client.db("BloodDonate").collection("users");
-    const donationrequestCollection = client.db('BloodDonate').collection('donation-requests')
     const contentCollection = client.db('BloodDonate').collection('blogs')
+    const donationrequestCollection = client.db('BloodDonate').collection('donation-requests')
+    const donarCollection = client.db('BloodDonate').collection('donars')
     const fundingCollectiion = client.db('BloodDonate').collection('funds')
     // jwt api related
     app.post('/jwt', async (req, res) => {
@@ -47,7 +51,7 @@ async function run() {
     // Verifytoken 
 
     const Verifytoken = (req, res, next) => {
-      console.log('insert token', req.headers.authorization)
+      // console.log('insert token', req.headers.authorization)
       if (!req.headers.authorization) {
         return res.status(401).send({ message: 'Forbidden message' })
       }
@@ -113,7 +117,7 @@ async function run() {
 
     // users collection
     app.get('/users', Verifytoken, verifyAdmin, async (req, res) => {
-      console.log(req.headers)
+      // console.log(req.headers)
 
       const result = await usersCollection.find().toArray()
       res.send(result)
@@ -130,7 +134,7 @@ async function run() {
     //  admin  role  ar email
     app.get('/users/admin/:email', Verifytoken, async (req, res) => {
       const email = req.params.email;
-      console.log(email);
+      // console.log(email);
 
       // Check if the email in the request matches the decoded email
       if (email !== req.decoded.email) {
@@ -139,7 +143,7 @@ async function run() {
 
       // Find the user by email
       const query = { email: email };
-      console.log(query);
+      // console.log(query);
       const user = await usersCollection.findOne(query);
 
       let admin = false;
@@ -155,10 +159,10 @@ async function run() {
     app.get('/users/profile/:email', async (req, res) => {
       try {
         const email = req.params.email; // Extract the email from the URL parameters
-        console.log('Email:', email);
+        // console.log('Email:', email);
 
         const query = { email: email }; // Query to search for the user
-        console.log('Query:', query);
+        // console.log('Query:', query);
 
         const user = await usersCollection.findOne(query); // Find the user in the collection
 
@@ -174,10 +178,10 @@ async function run() {
     app.get('/update/:id', async (req, res) => {
       try {
         const id = req.params.id; // Extract the email from the URL parameters
-        console.log('Email:', id);
+        // console.log('Email:', id);
 
         const query = { _id: new ObjectId(id) }; // Query to search for the user
-        console.log('Query:', query);
+        // console.log('Query:', query);
 
         const user = await usersCollection.findOne(query); // Find the user in the collection
 
@@ -221,7 +225,7 @@ async function run() {
 
     // admin role................................
     app.patch('/users/admin/:id', Verifytoken, verifyAdmin, async (req, res) => {
-      console.log('Received request to make admin for ID:', req.params.id);
+      // console.log('Received request to make admin for ID:', req.params.id);
       const id = req.params.id
       const filter = { _id: new ObjectId(id) }
       const updatedoc = {
@@ -274,7 +278,7 @@ async function run() {
 
     app.put('/users/status/:id', Verifytoken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+      // console.log(id);
 
       const { status } = req.body;
       console.log(status);
@@ -311,7 +315,7 @@ async function run() {
     //  volunteer  role  ar email
     app.get('/users/volunteer/:email', Verifytoken, async (req, res) => {
       const email = req.params.email;
-      console.log(email);
+      // console.log(email);
 
 
       if (email !== req.decoded.email) {
@@ -320,7 +324,7 @@ async function run() {
 
 
       const query = { email: email };
-      console.log(query);
+      // console.log(query);
       const user = await usersCollection.findOne(query);
 
       let volunteer = false;
@@ -334,7 +338,7 @@ async function run() {
 
     // volunteer role
     app.patch('/users/Volunteer/:id', Verifytoken, verifyVlounteer, async (req, res) => {
-      console.log('Received request to make admin for ID:', req.params.id);
+      // console.log('Received request to make admin for ID:', req.params.id);
       const id = req.params.id
       const filter = { _id: new ObjectId(id) }
       const updatedoc = {
@@ -381,6 +385,7 @@ async function run() {
     // donation update ........................
     app.patch('/donation/:id', async (req, res) => {
       const userData = req.body
+      console.log('data',userData)
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const updatedoc = {
@@ -406,12 +411,13 @@ async function run() {
     })
 
 
+
     // view btn ay clcik korly donate now btn and conform ay click korly status Updated.................
     app.put('/donation-requests/:id', async (req, res) => {
       const id = req.params.id;
-      console.log(id)
-      const status = req.body.status;
-      console.log(status)
+      // console.log(id)
+      const { status, donorName, donorEmail } = req.body; 
+      // console.log(status,donorName,donorEmail)
       const query = { _id: new ObjectId(id) };
 
       const item = await donationrequestCollection.findOne(query);
@@ -419,7 +425,7 @@ async function run() {
         return res.status(400).send({ message: 'This item is already marked as inprogress' });
       }
       const updateDoc = {
-        $set: { status: status },
+        $set: { status, donorName, donorEmail }
       };
       const result = await donationrequestCollection.updateOne(query, updateDoc);
       if (result.modifiedCount === 0) {
@@ -438,8 +444,20 @@ async function run() {
       res.send(result)
     })
 
+
+    // donation requset pending status  filter api........
+    app.get ('/alldonars', async (req,res)=>{
+      const result = await donationrequestCollection.find({status:'pending'}).toArray()
+      // console.log(result)
+      res.send(result)
+    })
+
+
+
     // vlounteer all donation
     app.get('/alldonarrequest', async (req, res) => {
+      const status = req.body
+
       const result = await donationrequestCollection.find().toArray()
       res.send(result)
     })
@@ -447,10 +465,10 @@ async function run() {
     // vlounteer updated staus
     app.put('/alldonar/status/:id', async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+      // console.log(id);
 
       const { status } = req.body;
-      console.log(status);
+      // console.log(status);
 
       if (!['pending', 'inprogress', 'cancaled', 'done'].includes(status)) {
         return res.status(400).json({ message: 'Invalid status selected' });
@@ -482,15 +500,33 @@ async function run() {
     });
 
 
+
+
+
+
+    
     // add blog api...........
     app.get('/blogs', async (req, res) => {
       const result = await contentCollection.find().toArray()
       res.send(result)
     })
+    app.get('/blog', async (req, res) => {
+      const result = await contentCollection.find({status:"published"}).toArray()
+      console.log(result)
+      res.send(result)
+    })
+    app.get('/blog/:id', async (req, res) => {
+      const id = req.params.id
+      const query ={_id: new ObjectId(id)}
+      const result = await contentCollection.find(query).toArray()
+      res.send(result)
+    })
+
+
     app.post('/blogs', async (req, res) => {
       const blog = req.body
       const result = await contentCollection.insertOne(blog)
-      console.log(result)
+      // console.log(result)
       res.send(result)
 
 
@@ -504,25 +540,25 @@ async function run() {
 
     })
 
-    app.patch('/blogs/:id', async (req, res) => {
-      const userData = req.body
-      const id = req.params.id
-      const query = { _id: new ObjectId(id) }
-      const updatedoc = {
-        $set: {
-          bloodGroup: userData.bloodGroup,
-          district: userData.district,
-          donationDate: userData.donationDate,
-          donationTime: userData.donationTime,
-          fullAddress: userData.fullAddress,
-          hospitalName: userData.hospitalName,
-          recipientName: userData.recipientName,
-          upazila: userData.upazila,
-        }
-      }
-      const result = await donationrequestCollection.updateOne(query, updatedoc)
-      res.send(result)
-    })
+    // app.patch('/blogs/:id', async (req, res) => {
+    //   const userData = req.body
+    //   const id = req.params.id
+    //   const query = { _id: new ObjectId(id) }
+    //   const updatedoc = {
+    //     $set: {
+    //       bloodGroup: userData.bloodGroup,
+    //       district: userData.district,
+    //       donationDate: userData.donationDate,
+    //       donationTime: userData.donationTime,
+    //       fullAddress: userData.fullAddress,
+    //       hospitalName: userData.hospitalName,
+    //       recipientName: userData.recipientName,
+    //       upazila: userData.upazila,
+    //     }
+    //   }
+    //   const result = await donationrequestCollection.updateOne(query, updatedoc)
+    //   res.send(result)
+    // })
     app.patch('/blogs/:id', async (req, res) => {
       const { id } = req.params;
       const updateItem = req.body;
@@ -541,25 +577,24 @@ async function run() {
     // search donars 
     app.get("/donars", async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
-
+    
       // Check if all 
       if (!bloodGroup || !district || !upazila) {
         return res.status(400).json({ message: "Missing required parameters" });
       }
-
+    
       try {
-        const donors = await donationrequestCollection.find({
+        const donors = await usersCollection.find({
           bloodGroup,
           district,
           upazila,
-        }).toArray();
-
+        }).toArray(); 
         // If no donors found
         if (donors.length === 0) {
           return res.status(404).json({ message: "No donors found for the selected criteria." });
         }
-
-
+  
+        
         res.status(200).json(donors);
       } catch (error) {
         console.error("Error fetching donors:", error);
