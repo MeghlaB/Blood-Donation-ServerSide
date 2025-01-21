@@ -117,11 +117,21 @@ async function run() {
 
     // users collection
     app.get('/users', Verifytoken, verifyAdmin, async (req, res) => {
-      // console.log(req.headers)
-
-      const result = await usersCollection.find().toArray()
-      res.send(result)
-    })
+      const { status } = req.query; 
+    
+      let filter = {};
+      if (status && status !== 'all') {
+        filter.status = status; 
+      }
+    
+      try {
+        const users = await usersCollection.find(filter).toArray();
+        res.send(users);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
 
     // user api post.................
     app.post('/users', async (req, res) => {
@@ -132,7 +142,7 @@ async function run() {
 
 
     //  admin  role  ar email
-    app.get('/users/admin/:email', Verifytoken, async (req, res) => {
+    app.get('/users/admin/:email', Verifytoken, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       // console.log(email);
 
@@ -148,7 +158,7 @@ async function run() {
 
       let admin = false;
       if (user) {
-        admin = user.role === 'admin'; // Check if the user's role is 'admin'
+        admin = user.role === 'admin'; 
       }
 
       // Send response
@@ -158,13 +168,13 @@ async function run() {
     // user profile api.......................
     app.get('/users/profile/:email', async (req, res) => {
       try {
-        const email = req.params.email; // Extract the email from the URL parameters
+        const email = req.params.email; 
         // console.log('Email:', email);
 
-        const query = { email: email }; // Query to search for the user
+        const query = { email: email }; 
         // console.log('Query:', query);
 
-        const user = await usersCollection.findOne(query); // Find the user in the collection
+        const user = await usersCollection.findOne(query); 
 
         if (user) {
           res.send(user); // Send the user data
@@ -375,7 +385,7 @@ async function run() {
     })
 
     // doantion delate api.........................
-    app.delete('/donation/:id', async (req, res) => {
+    app.delete('/donation/:id',Verifytoken, async (req, res) => {
       const id = req.params.id
       const query = { _id: new ObjectId(id) }
       const result = await donationrequestCollection.deleteOne(query)
@@ -515,22 +525,66 @@ async function run() {
       console.log(result)
       res.send(result)
     })
-    app.get('/blog/:id', async (req, res) => {
+    app.get('/blog/:id',  async (req, res) => {
       const id = req.params.id
       const query ={_id: new ObjectId(id)}
       const result = await contentCollection.find(query).toArray()
       res.send(result)
     })
-
-
     app.post('/blogs', async (req, res) => {
       const blog = req.body
       const result = await contentCollection.insertOne(blog)
       // console.log(result)
       res.send(result)
-
-
     })
+
+    // filer with voluter 
+    app.get('/blogsfilter', async (req, res) => {
+      const { status } = req.query; 
+    
+      let filter = {};
+      if (status && status !== 'all') {
+        filter.status = status; 
+      }
+    
+      try {
+        const blogs = await contentCollection.find(filter).toArray();
+        res.send(blogs);
+      } catch (error) {
+        console.error('Error fetching blogs:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+
+
+    // vlouteer only status chnage with draft 
+    app.patch('/bloges/:id', async (req, res) => {
+      const { id } = req.params;
+      const { status } = req.body
+    
+  
+      if (status !== 'draft') {
+        return res.status(403).send({ message: 'Only "draft" status is allowed to update' });
+      }
+    
+      try {
+        const result = await contentCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status } }
+        );
+    
+        if (result.modifiedCount === 0) {
+          return res.status(404).send({ message: 'Blog not found or already in draft status' });
+        }
+    
+        res.send({ message: 'Status updated to draft successfully', result });
+      } catch (error) {
+        console.error('Error updating blog status:', error);
+        res.status(500).send({ message: 'Internal Server Error', error });
+      }
+    });
+    
+
 
     app.delete('/blogs/:id', async (req, res) => {
       const id = req.params.id
@@ -540,25 +594,7 @@ async function run() {
 
     })
 
-    // app.patch('/blogs/:id', async (req, res) => {
-    //   const userData = req.body
-    //   const id = req.params.id
-    //   const query = { _id: new ObjectId(id) }
-    //   const updatedoc = {
-    //     $set: {
-    //       bloodGroup: userData.bloodGroup,
-    //       district: userData.district,
-    //       donationDate: userData.donationDate,
-    //       donationTime: userData.donationTime,
-    //       fullAddress: userData.fullAddress,
-    //       hospitalName: userData.hospitalName,
-    //       recipientName: userData.recipientName,
-    //       upazila: userData.upazila,
-    //     }
-    //   }
-    //   const result = await donationrequestCollection.updateOne(query, updatedoc)
-    //   res.send(result)
-    // })
+  
     app.patch('/blogs/:id', async (req, res) => {
       const { id } = req.params;
       const updateItem = req.body;
@@ -578,7 +614,6 @@ async function run() {
     app.get("/donars", async (req, res) => {
       const { bloodGroup, district, upazila } = req.query;
     
-      // Check if all 
       if (!bloodGroup || !district || !upazila) {
         return res.status(400).json({ message: "Missing required parameters" });
       }
@@ -589,12 +624,10 @@ async function run() {
           district,
           upazila,
         }).toArray(); 
-        // If no donors found
+        
         if (donors.length === 0) {
           return res.status(404).json({ message: "No donors found for the selected criteria." });
         }
-  
-        
         res.status(200).json(donors);
       } catch (error) {
         console.error("Error fetching donors:", error);
@@ -605,7 +638,7 @@ async function run() {
 
 
     // Funding payment api----------------------
-    app.post('/create-payment-intent', async (req, res) => {
+    app.post('/create-payment-intent',Verifytoken, async (req, res) => {
       const { amount } = req.body;
 
       if (!amount || amount <= 0) {
@@ -628,7 +661,7 @@ async function run() {
       }
     });
 
-    app.post('/funds', async (req, res) => {
+    app.post('/funds',Verifytoken,async(req, res) => {
       const funding = req.body
       const fundingResult = await fundingCollectiion.insertOne(funding)
       res.send(fundingResult)
@@ -658,14 +691,9 @@ async function run() {
           funding:totalFoundingAmount
       })
     })
-
-
-
-
-
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
