@@ -68,7 +68,7 @@ async function run() {
 
 
 const Verifytoken = (req, res, next) => {
-    console.log('insert token', req.headers.authorization)
+    // console.log('insert token', req.headers.authorization)
     if (!req.headers.authorization) {
         return res.status(401).send({ message: 'Forbidden message' }); 
     }
@@ -620,7 +620,7 @@ const Verifytoken = (req, res, next) => {
         const blogs = await contentCollection.find(filter).toArray();
         res.send(blogs);
       } catch (error) {
-        console.error('Error fetching blogs:', error);
+        // console.error('Error fetching blogs:', error);
         res.status(500).send({ message: 'Internal Server Error', error });
       }
     });
@@ -680,29 +680,68 @@ const Verifytoken = (req, res, next) => {
     });
 
     // search donars 
-    app.get("/donars", async (req, res) => {
-      const { bloodGroup, district, upazila } = req.query;
+
+app.get('/donars', async (req, res) => {
+  const { bloodGroup, district } = req.query;
+
+  
+  // If no query parameters are provided, fetch all donors
+  if (!bloodGroup && !district) {
+    const result = await usersCollection.find().toArray();
+    console.log(result);
+    return res.send(result);
+  }
+
+  // Build the filter query
+  const filter = {};
+  if (bloodGroup) {
+    filter.bloodGroup = bloodGroup;
+  }
+  if (district) {
+    filter.district = district;
+  }
+
+  try {
+    // Query the database with the filters
+    const donors = await usersCollection.find(filter).toArray();
+
+    // If no donors are found, return a 404 response
+    if (donors.length === 0) {
+      return res.status(404).json({ message: "No donors found for the selected criteria." });
+    }
+
+    // Return the list of donors as a JSON response
+    res.status(200).json(donors);
+  } catch (error) {
+    console.error("Error fetching donors:", error);
+    res.status(500).json({ message: "An error occurred while fetching donor data." });
+  }
+});
+
     
-      if (!bloodGroup || !district || !upazila) {
-        return res.status(400).json({ message: "Missing required parameters" });
-      }
+    // app.get("/donars", async (req, res) => {
+    //   const { bloodGroup, district, upazila } = req.query;
     
-      try {
-        const donors = await usersCollection.find({
-          bloodGroup,
-          district,
-          upazila,
-        }).toArray(); 
+    //   if (!bloodGroup || !district || !upazila) {
+    //     return res.status(400).json({ message: "Missing required parameters" });
+    //   }
+
+    //   try {
+    //     const donors = await usersCollection.find({
+    //       bloodGroup,
+    //       district,
+    //       upazila,
+    //     }).toArray(); 
         
-        if (donors.length === 0) {
-          return res.status(404).json({ message: "No donors found for the selected criteria." });
-        }
-        res.status(200).json(donors);
-      } catch (error) {
-        console.error("Error fetching donors:", error);
-        res.status(500).json({ message: "An error occurred while fetching donor data." });
-      }
-    });
+    //     if (donors.length === 0) {
+    //       return res.status(404).json({ message: "No donors found for the selected criteria." });
+    //     }
+    //     res.status(200).json(donors);
+    //   } catch (error) {
+    //     console.error("Error fetching donors:", error);
+    //     res.status(500).json({ message: "An error occurred while fetching donor data." });
+    //   }
+    // });
 
 
 
@@ -760,6 +799,7 @@ const Verifytoken = (req, res, next) => {
           funding:totalFoundingAmount
       })
     })
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     // console.log("Pinged your deployment. You successfully connected to MongoDB!");
